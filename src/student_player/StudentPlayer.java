@@ -44,7 +44,7 @@ public class StudentPlayer extends SaboteurPlayer {
     private boolean isFirstTime;
     private final int K_VALUE = 8;
     private SaboteurMove move;
-
+    private int[] tilePriorities = {2,100,100,100,100,2,1,2,0,1,2,100,100,100,100,100};
     // the position of our nugget
     private int[] posCurrentTarget;
 
@@ -165,6 +165,8 @@ public class StudentPlayer extends SaboteurPlayer {
                 // if we know where the nugget is and we have a map card, the map card is
                 // rendered obsolete
                 // TODO: drop the map card in the deck
+                return new SaboteurMove(new SaboteurDrop(), hand.indexOf(map),
+                0, playerNumber);
             }
 
             // TODO: remove the least useful cards from the deck vs dropping random card
@@ -367,9 +369,9 @@ public class StudentPlayer extends SaboteurPlayer {
                 }
             }
         }
-
-        potentialMoves.sort((SaboteurMove a, SaboteurMove b) -> manhattanDistance(a.getPosPlayed())
-                - manhattanDistance(b.getPosPlayed()));
+        
+        potentialMoves.sort((SaboteurMove a, SaboteurMove b) -> manhattanDistance(a.getPosPlayed()) + tilePriorities[(int)(((SaboteurTile)(a.getCardPlayed())).getIdx().charAt(0))]
+        - (manhattanDistance(b.getPosPlayed()) + tilePriorities[(int)(((SaboteurTile)(b.getCardPlayed())).getIdx().charAt(0))]) );
 
         for (SaboteurMove m : potentialMoves)
             if (boardState.isLegal(m))
