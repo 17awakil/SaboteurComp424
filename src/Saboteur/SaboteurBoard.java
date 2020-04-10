@@ -6,7 +6,7 @@ import boardgame.BoardState;
 import boardgame.Move;
 
 /**
- * @author Pierre Orhan, extends  mgrenander work
+ * @author Pierre Orhan, extends mgrenander work
  */
 public class SaboteurBoard extends Board {
     private SaboteurBoardState boardState;
@@ -17,42 +17,60 @@ public class SaboteurBoard extends Board {
     }
 
     @Override
-    public int getWinner() { return boardState.getWinner(); }
+    public int getWinner() {
+        return boardState.getWinner();
+    }
 
     @Override
-    public void forceWinner(int win) { boardState.setWinner(win); }
+    public void forceWinner(int win) {
+        boardState.setWinner(win);
+    }
 
     @Override
-    public int getTurnPlayer() { return boardState.getTurnPlayer(); }
+    public int getTurnPlayer() {
+        return boardState.getTurnPlayer();
+    }
 
     @Override
-    public int getTurnNumber() { return boardState.getTurnNumber(); }
+    public int getTurnNumber() {
+        return boardState.getTurnNumber();
+    }
 
     @Override
     public void move(Move m) throws IllegalArgumentException {
         boardState.processMove((SaboteurMove) m);
     }
+
     @Override
-    public Move getBoardMove(){
+    public Move getBoardMove() {
         return boardState.getBoardMove();
     }
 
     @Override
-    public BoardState getBoardState() { return boardState; }
+    public BoardState getBoardState() {
+        return boardState;
+    }
 
     @Override
     public BoardPanel createBoardPanel() {
         SaboteurBoardPanel sbp = new SaboteurBoardPanel();
-        return sbp; }
+        return sbp;
+    }
 
     @Override
-    public String getNameForID(int p) { return String.format("Player-%d", p); }
+    public String getNameForID(int p) {
+        return String.format("Player-%d", p);
+    }
 
     @Override
-    public int getIDForName(String s) { return Integer.valueOf(s.split("-")[1]); }
+    public int getIDForName(String s) {
+        return Integer.valueOf(s.split("-")[1]);
+    }
 
     @Override
-    public int getNumberOfPlayers() { return 2; }
+    public int getNumberOfPlayers() {
+        return 2;
+    }
 
     @Override
     public Move parseMove(String str) throws IllegalArgumentException {
@@ -60,12 +78,15 @@ public class SaboteurBoard extends Board {
     }
 
     @Override
-    public Object clone() { //NOTE (PIERRE 2020) the clone is not necessary for the server connection and never used their...
+    public Object clone() { // NOTE (PIERRE 2020) the clone is not necessary for the server connection and
+                            // never used their...
         SaboteurBoard board = new SaboteurBoard();
         board.boardState = (SaboteurBoardState) boardState.clone();
         return board;
     }
 
     @Override
-    public Move getRandomMove() { return boardState.getRandomMove(); }
+    public Move getRandomMove() {
+        return boardState.getRandomMove();
+    }
 }

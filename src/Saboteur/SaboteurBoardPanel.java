@@ -32,35 +32,44 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
         private SaboteurCard tile;
         int xPos;
         int yPos;
+
         // Construct a tile!
         TileImage(SaboteurCard tile, int x, int y) {
             this.tile = tile;
-            String name = tile.getName().contains("Tile") ? tile.getName().split(":")[1] : tile.getName(); //in case we want to load other types of cards images...
+            String name = tile.getName().contains("Tile") ? tile.getName().split(":")[1] : tile.getName(); // in case we
+                                                                                                           // want to
+                                                                                                           // load other
+                                                                                                           // types of
+                                                                                                           // cards
+                                                                                                           // images...
             try {
                 URL url = getClass().getResource("tiles");
-                String basePath = ((URL) url).getPath();
-                this.img= ImageIO.read(new File(basePath, name + ".png"));
-            }catch (IOException ie){
+                String basePath = ((URL) url).getPath().replaceAll("%20", " ");
+                this.img = ImageIO.read(new File(basePath, name + ".png"));
+            } catch (IOException ie) {
                 System.out.println("problem loading images, at");
                 URL url = getClass().getResource("tiles");
-                String basePath = ((URL) url).getPath();
+                String basePath = ((URL) url).getPath().replaceAll("%20", " ");
                 System.out.println(basePath + "\\" + name + ".png");
             }
             this.Height = img.getHeight();
             this.Width = img.getWidth();
-            this.yPos = x * Height+10;
+            this.yPos = x * Height + 10;
             this.xPos = y * Width;
 
         }
+
         void draw(Graphics g) {
             draw(g, xPos, yPos);
         }
+
         void draw(Graphics g, int cx, int cy) {
-//            System.out.println("img cara:("+Height+","+Width+")"+tile.getName());
-//            System.out.println("drawn at:("+cx+","+cy+")");
-            g.drawImage(this.img,cx,cy,null);
+            // System.out.println("img cara:("+Height+","+Width+")"+tile.getName());
+            // System.out.println("drawn at:("+cx+","+cy+")");
+            g.drawImage(this.img, cx, cy, null);
         }
     }
+
     // Stores all board pieces.
     private ArrayList<TileImage> allTileImgs;
     private ArrayList<TileImage> p1cardsImgs;
@@ -68,24 +77,24 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
     private ArrayList<TileImage> p1MalusImgs;
     private ArrayList<TileImage> p2MalusImgs;
 
-    //user interactions:
+    // user interactions:
     private BoardPanelListener listener;
-    //For a user: either he selects:
+    // For a user: either he selects:
     // ==A tile==
-    //if a tile is selected by the user in its hand --> then we wait for a mouse pressed at the position he wants to put the tile.
+    // if a tile is selected by the user in its hand --> then we wait for a mouse
+    // pressed at the position he wants to put the tile.
     private boolean isTileSelected;
     private SaboteurTile selectedTile;
-    //== A Destroy ==
+    // == A Destroy ==
     private boolean isDestroySelected;
-    //==A map ==
+    // ==A map ==
     private boolean isMapSelected;
-    //== Bonus or malus are automatically selected;
-    //for the drop:
+    // == Bonus or malus are automatically selected;
+    // for the drop:
     private boolean isDropping;
     private boolean flipState;
 
-
-    //background image
+    // background image
     public BufferedImage background;
     public final double Scale;
 
@@ -95,12 +104,12 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
         addMouseMotionListener(this);
         addComponentListener(this);
 
-        try{
+        try {
             URL url = getClass().getResource("tiles");
-            String basePath = ((URL) url).getPath();
+            String basePath = ((URL) url).getPath().replaceAll("%20", " ");
             System.out.println(basePath);
-            this.background = ImageIO.read(new File(basePath,"backgroundSmall.png"));
-        }catch (IOException ie){
+            this.background = ImageIO.read(new File(basePath, "backgroundSmall.png"));
+        } catch (IOException ie) {
             System.out.println("problem loading background image");
         }
         isTileSelected = false;
@@ -108,7 +117,7 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
         isMapSelected = false;
         isDropping = false;
         flipState = false;
-        Scale = 1.2;
+        Scale = 1.5;
     }
 
     // Overriding BoardPanel methods to help with listener functionality.
@@ -117,6 +126,7 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
         listener = l;
         System.out.println("REQUESTED.");
     }
+
     @Override
     protected void cancelMoveRequest() {
         listener = null;
@@ -125,13 +135,13 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
     // Drawing a board.
     @Override
     public void drawBoard(Graphics g) {
-        //super.drawBoard(g); // Paints background and other
-        Graphics2D g2 = (Graphics2D)g;
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); //Makes pretty
-        g2.scale(1.0/((double)Scale), 1.0/((double)Scale));
-        g2.drawImage(this.background,0,0,null);
+        // super.drawBoard(g); // Paints background and other
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); // Makes pretty
+        g2.scale(1.0 / ((double) Scale), 1.0 / ((double) Scale));
+        g2.drawImage(this.background, 0, 0, null);
         allTileImgs = new ArrayList<>();
-        updateBoardPieces(); //update allTileImgs
+        updateBoardPieces(); // update allTileImgs
         for (TileImage ti : allTileImgs) {
             ti.draw(g2);
         }
@@ -153,6 +163,7 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
     public void paint(Graphics g) {
         super.paint(g);
     }
+
     // A bit sketchy, but has to be done to highlight possible moves for human.
     private void humanRepaint() {
         bufferDirty = true;
@@ -172,53 +183,55 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
                 }
             }
         }
-       ArrayList<SaboteurCard> players1Cards = mysb.getPlayerCardsForDisplay(1);
-       this.p1cardsImgs = new ArrayList<>();
-       int y = 1;
-       int x = SaboteurBoardState.BOARD_SIZE;
-       for(SaboteurCard pc : players1Cards){
-           this.p1cardsImgs.add(new TileImage(pc,x,y));
-           y+=1;
-       }
-       ArrayList<SaboteurCard> players2Cards = mysb.getPlayerCardsForDisplay(0);
+        ArrayList<SaboteurCard> players1Cards = mysb.getPlayerCardsForDisplay(1);
+        this.p1cardsImgs = new ArrayList<>();
+        int y = 1;
+        int x = SaboteurBoardState.BOARD_SIZE;
+        for (SaboteurCard pc : players1Cards) {
+            this.p1cardsImgs.add(new TileImage(pc, x, y));
+            y += 1;
+        }
+        ArrayList<SaboteurCard> players2Cards = mysb.getPlayerCardsForDisplay(0);
         this.p2cardsImgs = new ArrayList<>();
         y = 1;
-        x = SaboteurBoardState.BOARD_SIZE+2;
-        for(SaboteurCard pc : players2Cards){
-            this.p2cardsImgs.add(new TileImage(pc,x,y));
-            y+=1;
+        x = SaboteurBoardState.BOARD_SIZE + 2;
+        for (SaboteurCard pc : players2Cards) {
+            this.p2cardsImgs.add(new TileImage(pc, x, y));
+            y += 1;
         }
         int nbMalus1 = mysb.getNbMalus(1);
         this.p1MalusImgs = new ArrayList<>();
-        for(int i=0;i<nbMalus1;i++){
-            this.p1MalusImgs.add(new TileImage(new SaboteurMalus(),SaboteurBoardState.BOARD_SIZE,9+i));
+        for (int i = 0; i < nbMalus1; i++) {
+            this.p1MalusImgs.add(new TileImage(new SaboteurMalus(), SaboteurBoardState.BOARD_SIZE, 9 + i));
         }
         int nbMalus2 = mysb.getNbMalus(0);
         this.p2MalusImgs = new ArrayList<>();
-        for(int i=0;i<nbMalus2;i++){
-            this.p2MalusImgs.add(new TileImage(new SaboteurMalus(),SaboteurBoardState.BOARD_SIZE+2,9+i));
+        for (int i = 0; i < nbMalus2; i++) {
+            this.p2MalusImgs.add(new TileImage(new SaboteurMalus(), SaboteurBoardState.BOARD_SIZE + 2, 9 + i));
         }
     }
 
-    //todo : implement all the following method to manage the environment.
+    // todo : implement all the following method to manage the environment.
     @Override
     public void mousePressed(MouseEvent e) {
-        if (listener == null) { return; }
+        if (listener == null) {
+            return;
+        }
 
         if (isTileSelected) {
             processTileChoice(e);
         } else if (isDestroySelected) {
-           processDestroyChoice(e);
-        } else if(isMapSelected) {
-           processMapChoice(e);
-        } else{
+            processDestroyChoice(e);
+        } else if (isMapSelected) {
+            processMapChoice(e);
+        } else {
             processCardChoice(e);
         }
     }
 
     private void resetSelection() {
         isTileSelected = false;
-        isDestroySelected= false;
+        isDestroySelected = false;
         isMapSelected = false;
         isDropping = false;
         flipState = false;
@@ -227,44 +240,52 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
     private void processCardChoice(MouseEvent e) {
         double clickX = e.getX() * Scale;
         double clickY = e.getY() * Scale;
-        if(isUsingButton(e)) return;
+        if (isUsingButton(e))
+            return;
         int turnPlayer = this.getCurrentBoard().getTurnPlayer();
         updateBoardPieces();
         ArrayList<TileImage> hand = turnPlayer == 1 ? this.p1cardsImgs : this.p2cardsImgs;
         // Check if we clicked on a card in the hand
         for (TileImage gp : hand) {
             if (clickInSquare(clickX, clickY, gp.xPos, gp.yPos, gp.Height, gp.Width)) {
-                if(isDropping){
+                if (isDropping) {
                     this.processDropChoice(hand.indexOf(gp));
-                }
-                else if (gp.tile.getName().contains("Tile")) {
+                } else if (gp.tile.getName().contains("Tile")) {
                     this.isTileSelected = true;
                     this.selectedTile = (SaboteurTile) gp.tile;
-                } else if (gp.tile.getName().contains("Map")) this.isMapSelected = true;
-                else if (gp.tile.getName().contains("Destroy")) this.isDestroySelected = true;
-                else if (gp.tile.getName().contains("Malus")) this.processMalusChoice();
-                else if (gp.tile.getName().contains("Bonus")) this.processBonusChoice();
+                } else if (gp.tile.getName().contains("Map"))
+                    this.isMapSelected = true;
+                else if (gp.tile.getName().contains("Destroy"))
+                    this.isDestroySelected = true;
+                else if (gp.tile.getName().contains("Malus"))
+                    this.processMalusChoice();
+                else if (gp.tile.getName().contains("Bonus"))
+                    this.processBonusChoice();
                 break;
             }
         }
     }
-    private void processTileChoice(MouseEvent e){
-        double clickX = e.getX()* Scale;
-        double clickY = e.getY()* Scale;
-        if(isUsingButton(e)) return;
+
+    private void processTileChoice(MouseEvent e) {
+        double clickX = e.getX() * Scale;
+        double clickY = e.getY() * Scale;
+        if (isUsingButton(e))
+            return;
         int Width = 37;
         int Height = 60;
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
         SaboteurTile[][] boardDisplayed = pbs.getBoardForDisplay();
         outer: for (int i = 0; i < SaboteurBoardState.BOARD_SIZE; i++) {
             for (int j = 0; j < SaboteurBoardState.BOARD_SIZE; j++) {
-                if(boardDisplayed[i][j]==null) {
-                    int yPos = i *Height  + 10;
+                if (boardDisplayed[i][j] == null) {
+                    int yPos = i * Height + 10;
                     int xPos = j * Width;
-                    int[] newPos = {i,j};
-                    if (clickInSquare(clickX, clickY, xPos, yPos,Height,Width)) {
-                        if(this.flipState) this.selectedTile = this.selectedTile.getFlipped();
-                        if(pbs.verifyLegit(this.selectedTile.getPath(),newPos) && pbs.getNbMalus(pbs.getTurnPlayer())==0) {
+                    int[] newPos = { i, j };
+                    if (clickInSquare(clickX, clickY, xPos, yPos, Height, Width)) {
+                        if (this.flipState)
+                            this.selectedTile = this.selectedTile.getFlipped();
+                        if (pbs.verifyLegit(this.selectedTile.getPath(), newPos)
+                                && pbs.getNbMalus(pbs.getTurnPlayer()) == 0) {
                             SaboteurMove move = new SaboteurMove(this.selectedTile, i, j, pbs.getTurnPlayer());
                             listener.moveEntered(move);
                             cancelMoveRequest();
@@ -276,19 +297,21 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
             }
         }
     }
-    private void processMapChoice(MouseEvent e){
-        double clickX = e.getX()* Scale;
-        double clickY = e.getY()* Scale;
-        if(isUsingButton(e)) return;
+
+    private void processMapChoice(MouseEvent e) {
+        double clickX = e.getX() * Scale;
+        double clickY = e.getY() * Scale;
+        if (isUsingButton(e))
+            return;
         int Width = 37;
         int Height = 60;
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
-        for(int h=0;h<3;h++){
+        for (int h = 0; h < 3; h++) {
             int i = SaboteurBoardState.hiddenPos[h][0];
             int j = SaboteurBoardState.hiddenPos[h][1];
-            int yPos = i *Height  + 10;
+            int yPos = i * Height + 10;
             int xPos = j * Width;
-            if (clickInSquare(clickX, clickY, xPos, yPos,Height,Width)) {
+            if (clickInSquare(clickX, clickY, xPos, yPos, Height, Width)) {
                 SaboteurMove move = new SaboteurMove(new SaboteurMap(), i, j, pbs.getTurnPlayer());
                 listener.moveEntered(move);
                 cancelMoveRequest();
@@ -297,25 +320,27 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
             }
         }
     }
-    private void processDestroyChoice(MouseEvent e){
-        double clickX = e.getX()* Scale;
-        double clickY = e.getY()* Scale;
-        if(isUsingButton(e)) return;
+
+    private void processDestroyChoice(MouseEvent e) {
+        double clickX = e.getX() * Scale;
+        double clickY = e.getY() * Scale;
+        if (isUsingButton(e))
+            return;
         int Width = 37;
         int Height = 60;
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
         SaboteurTile[][] boardDisplayed = pbs.getBoardForDisplay();
         ArrayList<SaboteurTile> fixTile = new ArrayList<SaboteurTile>();
-        fixTile.add(0,boardDisplayed[SaboteurBoardState.originPos][SaboteurBoardState.originPos]);
-        fixTile.add(1,boardDisplayed[SaboteurBoardState.hiddenPos[0][0]][SaboteurBoardState.hiddenPos[0][1]]);
-        fixTile.add( 2,boardDisplayed[SaboteurBoardState.hiddenPos[1][0]][SaboteurBoardState.hiddenPos[1][1]]);
-        fixTile.add(3,boardDisplayed[SaboteurBoardState.hiddenPos[2][0]][SaboteurBoardState.hiddenPos[2][1]]);
+        fixTile.add(0, boardDisplayed[SaboteurBoardState.originPos][SaboteurBoardState.originPos]);
+        fixTile.add(1, boardDisplayed[SaboteurBoardState.hiddenPos[0][0]][SaboteurBoardState.hiddenPos[0][1]]);
+        fixTile.add(2, boardDisplayed[SaboteurBoardState.hiddenPos[1][0]][SaboteurBoardState.hiddenPos[1][1]]);
+        fixTile.add(3, boardDisplayed[SaboteurBoardState.hiddenPos[2][0]][SaboteurBoardState.hiddenPos[2][1]]);
         outer: for (int i = 0; i < SaboteurBoardState.BOARD_SIZE; i++) {
             for (int j = 0; j < SaboteurBoardState.BOARD_SIZE; j++) {
-                if (!(boardDisplayed[i][j]==null || fixTile.contains(boardDisplayed[i][j]))) {
-                    int yPos = i *Height  + 10;
+                if (!(boardDisplayed[i][j] == null || fixTile.contains(boardDisplayed[i][j]))) {
+                    int yPos = i * Height + 10;
                     int xPos = j * Width;
-                    if (clickInSquare(clickX, clickY, xPos, yPos,Height,Width)) {
+                    if (clickInSquare(clickX, clickY, xPos, yPos, Height, Width)) {
                         SaboteurMove move = new SaboteurMove(new SaboteurDestroy(), i, j, pbs.getTurnPlayer());
                         listener.moveEntered(move);
                         cancelMoveRequest();
@@ -326,45 +351,53 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
             }
         }
     }
-    private void processMalusChoice(){
+
+    private void processMalusChoice() {
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
         SaboteurMove move = new SaboteurMove(new SaboteurMalus(), 0, 0, pbs.getTurnPlayer());
         listener.moveEntered(move);
         cancelMoveRequest();
         resetSelection(); // Reset the selection variables
     }
+
     private void processBonusChoice() {
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
-        if(pbs.getNbMalus(pbs.getTurnPlayer())>0){
+        if (pbs.getNbMalus(pbs.getTurnPlayer()) > 0) {
             SaboteurMove move = new SaboteurMove(new SaboteurBonus(), 0, 0, pbs.getTurnPlayer());
             listener.moveEntered(move);
             cancelMoveRequest();
             resetSelection(); // Reset the selection variables
         }
     }
-    private void processDropChoice(int posCard){
+
+    private void processDropChoice(int posCard) {
         SaboteurBoardState pbs = (SaboteurBoardState) getCurrentBoard().getBoardState();
         SaboteurMove move = new SaboteurMove(new SaboteurDrop(), posCard, 0, pbs.getTurnPlayer());
         listener.moveEntered(move);
         cancelMoveRequest();
         resetSelection(); // Reset the selection variables
     }
-    private boolean isUsingButton(MouseEvent e){
-        double clickX = e.getX()* Scale;
-        double clickY = e.getY()* Scale;
-        //check if the mouse position is at the drop, cancel or flip button.
-        TileImage dropButton = new TileImage(new SaboteurMalus(),SaboteurBoardState.BOARD_SIZE+1,SaboteurBoardState.BOARD_SIZE+1);
-        if (clickInSquare(clickX, clickY, dropButton.xPos, dropButton.yPos, dropButton.Height, dropButton.Width)){
+
+    private boolean isUsingButton(MouseEvent e) {
+        double clickX = e.getX() * Scale;
+        double clickY = e.getY() * Scale;
+        // check if the mouse position is at the drop, cancel or flip button.
+        TileImage dropButton = new TileImage(new SaboteurMalus(), SaboteurBoardState.BOARD_SIZE + 1,
+                SaboteurBoardState.BOARD_SIZE + 1);
+        if (clickInSquare(clickX, clickY, dropButton.xPos, dropButton.yPos, dropButton.Height, dropButton.Width)) {
             this.isDropping = true;
             return true;
         }
-        TileImage cancelButton = new TileImage(new SaboteurMalus(),SaboteurBoardState.BOARD_SIZE+1,SaboteurBoardState.BOARD_SIZE+2);
-        if (clickInSquare(clickX, clickY, cancelButton.xPos, cancelButton.yPos, cancelButton.Height, cancelButton.Width)){
+        TileImage cancelButton = new TileImage(new SaboteurMalus(), SaboteurBoardState.BOARD_SIZE + 1,
+                SaboteurBoardState.BOARD_SIZE + 2);
+        if (clickInSquare(clickX, clickY, cancelButton.xPos, cancelButton.yPos, cancelButton.Height,
+                cancelButton.Width)) {
             this.resetSelection();
             return true;
         }
-        TileImage flipButton = new TileImage(new SaboteurMalus(),SaboteurBoardState.BOARD_SIZE+1,SaboteurBoardState.BOARD_SIZE+3);
-        if (clickInSquare(clickX, clickY, flipButton.xPos, flipButton.yPos, flipButton.Height, flipButton.Width)){
+        TileImage flipButton = new TileImage(new SaboteurMalus(), SaboteurBoardState.BOARD_SIZE + 1,
+                SaboteurBoardState.BOARD_SIZE + 3);
+        if (clickInSquare(clickX, clickY, flipButton.xPos, flipButton.yPos, flipButton.Height, flipButton.Width)) {
             this.flipState = !this.flipState;
             System.out.println("flip selected, current state: " + this.flipState);
             return true;
@@ -373,7 +406,7 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
     }
 
     private static boolean clickInSquare(double x, double y, double cx, double cy, double imgHeight, double imgWidth) {
-        return x>= cx && (x - cx) <= imgWidth && y>=cy && (y - cy) <= imgHeight;
+        return x >= cx && (x - cx) <= imgWidth && y >= cy && (y - cy) <= imgHeight;
     }
 
     /* Don't use these interface methods */
@@ -382,6 +415,7 @@ public class SaboteurBoardPanel extends BoardPanel implements MouseListener, Mou
 
     public void mouseReleased(MouseEvent e) {
     }
+
     public void componentResized(ComponentEvent arg0) {
     }
 
