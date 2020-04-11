@@ -5,10 +5,12 @@ import boardgame.Board;
 import boardgame.Move;
 
 /**
- * This class is used for communication with the server.
- * A move is summarized by {the card used, the position at which it is used (falls back to (0,0) for the effects card, to (x,0) for the Drop where x is the index of the card in your hand you want to drop),
- *                           the player that is using the card.}
- * Because the game is 1V1 a malus effect goes on the other player while bonus goes on itself.
+ * This class is used for communication with the server. A move is summarized by
+ * {the card used, the position at which it is used (falls back to (0,0) for the
+ * effects card, to (x,0) for the Drop where x is the index of the card in your
+ * hand you want to drop), the player that is using the card.} Because the game
+ * is 1V1 a malus effect goes on the other player while bonus goes on itself.
+ * 
  * @author Pierre Orhan, modified from mgrenander
  */
 public class SaboteurMove extends Move {
@@ -19,7 +21,7 @@ public class SaboteurMove extends Move {
     private boolean fromBoard;
     private String boardInit;
 
-    public SaboteurMove(SaboteurCard card,int x, int y, int playerId) {
+    public SaboteurMove(SaboteurCard card, int x, int y, int playerId) {
         this.cardName = card.getName();
         this.playerId = playerId;
         this.xMove = x;
@@ -28,12 +30,12 @@ public class SaboteurMove extends Move {
     }
 
     public SaboteurMove(String formatString) {
-        if(formatString.split(":")[0].equals("BoardInit")){ //Initialization move from the board, used by the server, not important for the player;
+        if (formatString.split(":")[0].equals("BoardInit")) { // Initialization move from the board, used by the server,
+                                                              // not important for the player;
             this.boardInit = formatString;
             this.fromBoard = true;
             this.playerId = Board.BOARD;
-        }
-        else {
+        } else {
             String[] components = formatString.split(" ");
             try {
                 this.cardName = components[0];
@@ -49,36 +51,54 @@ public class SaboteurMove extends Move {
 
     // Getters
     public SaboteurCard getCardPlayed() {
-        switch (this.cardName.split(":")[0]){
-            case "Tile": return new SaboteurTile(this.cardName.split(":")[1]);
-            case "Map": return new SaboteurMap();
-            case "Malus": return new SaboteurMalus();
-            case "Bonus": return new SaboteurBonus();
-            case "Destroy": return new SaboteurDestroy();
+        switch (this.cardName.split(":")[0]) {
+            case "Tile":
+                return new SaboteurTile(this.cardName.split(":")[1]);
+            case "Map":
+                return new SaboteurMap();
+            case "Malus":
+                return new SaboteurMalus();
+            case "Bonus":
+                return new SaboteurBonus();
+            case "Destroy":
+                return new SaboteurDestroy();
         }
         // Otherwise the move is a drop
         return new SaboteurDrop();
     }
 
-    public int[] getPosPlayed(){
-        return new int[]{this.xMove,this.yMove};
+    public int[] getPosPlayed() {
+        return new int[] { this.xMove, this.yMove };
     }
 
     // Server methods
     @Override
-    public int getPlayerID() { return this.playerId; }
+    public int getPlayerID() {
+        return this.playerId;
+    }
 
     @Override
-    public void setPlayerID(int playerId) { this.playerId = playerId; }
+    public void setPlayerID(int playerId) {
+        this.playerId = playerId;
+    }
 
     @Override
-    public void setFromBoard(boolean fromBoard) { this.fromBoard = fromBoard; }
-    public boolean getFromBoard() { return this.fromBoard;}
+    public void setFromBoard(boolean fromBoard) {
+        this.fromBoard = fromBoard;
+    }
 
-    public String getBoardInit() {return  this.boardInit;}
+    public boolean getFromBoard() {
+        return this.fromBoard;
+    }
+
+    public String getBoardInit() {
+        return this.boardInit;
+    }
 
     @Override
-    public boolean doLog() { return true; }
+    public boolean doLog() {
+        return true;
+    }
 
     @Override
     public String toPrettyString() {
@@ -87,9 +107,9 @@ public class SaboteurMove extends Move {
 
     @Override
     public String toTransportable() {
-        if(this.fromBoard){
-            return String.format("%s",this.boardInit);
+        if (this.fromBoard) {
+            return String.format("%s", this.boardInit);
         }
-        return String.format("%s %d %d %d",cardName, xMove, yMove,playerId);
+        return String.format("%s %d %d %d", cardName, xMove, yMove, playerId);
     }
 }
