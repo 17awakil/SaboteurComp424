@@ -392,6 +392,8 @@ public class StudentPlayer extends SaboteurPlayer {
             else if (cardName.equals("Malus"))
                 malus = card;
         }
+
+        int[] destroyCoords = findTileToDestroy(boardState.getHiddenBoard());
         // if we have a malus card, play it
         if (malus != null)
             return new SaboteurMove(malus, 0, 0, playerNumber);
@@ -401,11 +403,9 @@ public class StudentPlayer extends SaboteurPlayer {
                 SaboteurBoardState.originPos))
             return new SaboteurMove(map, this.posCurrentTarget[0], this.posCurrentTarget[1], this.player_id);
 
-        int[] destroyCoords = findTileToDestroy(boardState.getHiddenBoard()); 
         if(destroy != null && !Arrays.equals(destroyCoords,new int[] {-1,-1})){
             return new SaboteurMove(new SaboteurDestroy(),destroyCoords[0], destroyCoords[1], playerNumber); 
         }
-
         // check if we are malused
         if (boardState.getNbMalus(playerNumber) > 0) {
             // check to see if we have a bonus card to play, if yes play
@@ -428,7 +428,6 @@ public class StudentPlayer extends SaboteurPlayer {
                 // rendered obsolete
                 return new SaboteurMove(new SaboteurDrop(), hand.indexOf(map), 0, playerNumber);
             }
-
 
 
             // Check that hand size is at least 1 
@@ -531,10 +530,10 @@ public class StudentPlayer extends SaboteurPlayer {
                         // get intboard offset
                         int[] intBoardEdgeOffset = MyTools.mapPathOffsetToIntBoardOffset(offset);
 
-                        if (manhattanIntDistance(posParentIntBoard[0] + intBoardEdgeOffset[0],
-                                posParentIntBoard[1] + intBoardEdgeOffset[1]) <= manhattanIntDistance(
-                                        posParentIntBoard[0] + intBoardConnectionOffset[0],
-                                        posParentIntBoard[1] + intBoardConnectionOffset[1])) {
+                        if (manhattanIntDistance(posChildIntBoard[0] + intBoardEdgeOffset[0],
+                                posChildIntBoard[1] + intBoardEdgeOffset[1]) <= manhattanIntDistance(
+                                        posChildIntBoard[0] + intBoardConnectionOffset[0],
+                                        posChildIntBoard[1] + intBoardConnectionOffset[1])) {
                             potentialMoves.add(potentialMoveAtCoord);
                             break;
                         }
