@@ -41,4 +41,49 @@ public class MyTools {
                 || (aRight == bLeft && aRight == 1) && (aCenter == bCenter && aCenter == 1);
     }
 
+    public static int[] getConnectedPoint(int[] posParent, int[] posChild) {
+
+        int parentX = posParent[0], parentY = posParent[1];
+        int childX = posChild[0], childY = posChild[1];
+
+        if (parentX == childX) {
+            // if child & parent share the same row and parent column is greater, then
+            // connection is to the right of the child
+            if (parentY > childY)
+                return new int[] { 1, 0 };
+            // if child & parent share the same row and parent column is less, then
+            // connection is to the left of the child
+            else
+                return new int[] { -1, 0 };
+        }
+        if (parentY == childY) {
+            // if child & parent share the same column and parent row is greater, then
+            // connection is to the bottom of the child
+            if (parentX > childX)
+                return new int[] { 0, -1 };
+
+            // if child & parent share the same column and parent row is less, then
+            // connection is to the top of the child
+            else
+                return new int[] { 0, 1 };
+        }
+
+        return null;
+    }
+
+    public static int[] mapPathOffsetToIntBoardOffset(int[] offset) {
+        int[] newOffset = new int[] { offset[0], offset[1] };
+
+        int temp = newOffset[0];
+        newOffset[0] = newOffset[1];
+        newOffset[1] = temp;
+        newOffset[0] = -newOffset[0];
+
+        return newOffset;
+    }
+
+    public static boolean posEqual(int[] a, int[] b) {
+        return a[0] == b[0] && a[1] == b[1];
+    }
+
 }

@@ -1,21 +1,9 @@
 package student_player;
 
 import boardgame.Move;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.PriorityQueue;
-
+import java.util.*;
 import Saboteur.SaboteurPlayer;
-import Saboteur.cardClasses.SaboteurDrop;
-import Saboteur.cardClasses.SaboteurTile;
-import Saboteur.cardClasses.SaboteurCard;
-
-import java.util.Random;
-import java.util.stream.Collectors;
-
+import Saboteur.cardClasses.*;
 import Saboteur.SaboteurBoardState;
 import Saboteur.SaboteurMove;
 
@@ -32,6 +20,12 @@ public class StudentPlayer extends SaboteurPlayer {
             this.heuristic = StudentPlayer.this.manhattanDistance(row, col);
         }
 
+        public Node(int row, int col){
+            this.pos = new int[] { row, col };
+            this.heuristic = StudentPlayer.this.manhattanDistance(row, col);
+        }
+
+
         public int calc() {
             return cost + heuristic;
         }
@@ -47,6 +41,14 @@ public class StudentPlayer extends SaboteurPlayer {
 
     // the position of our nugget
     private int[] posCurrentTarget;
+
+    // offset of the edges from the center of the tile path
+    private int[][] edges = new int[][] { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+
+    // priorities of the tiles to allow better selection
+    private int[] tilePriorities = new int[] { 16, 100, 100, 100, 100, 16, 8, 16, 0, 8, 16, 100, 100, 100, 100, 100 };
+
+    private SaboteurBoardState boardState;
 
     /**
      * You must modify this constructor to return your student number. This is
@@ -83,139 +85,175 @@ public class StudentPlayer extends SaboteurPlayer {
         return manhattanIntDistance(coordinates[0], coordinates[1]);
     }
 
-    /**
-     * This is the primary method that you need to implement. The ``boardState``
-     * object contains the current state of the game, which your agent must use to
-     * make decisions.
-     */
-    public Move chooseMove(SaboteurBoardState boardState) {
-        SaboteurTile[][] displayBoard = boardState.getBoardForDisplay();
+    private int shortestManhattanDistanceOfTile(SaboteurTile tile, int[] posIntBoard) {
+        int min = Integer.MAX_VALUE;
+        int[][] path = tile.getPath();
 
-        // during first execution, do some extra math to locate the most optimal target
-        if (this.isFirstTime) {
-            this.isFirstTime = false;
-            this.posCurrentTarget = SaboteurBoardState.hiddenPos[1];
-        } else {
-            // check if we have new information about hidden tiles
+        for (int[] edge : this.edges) {
+            if (path[1 + edge[0]][1 + edge[1]] != 1)
+                continue;
 
-            // retrieve the tiles displayed from our persective
+            int[] intBoardOffset = MyTools.mapPathOffsetToIntBoardOffset(edge);
 
-            // do we need to find a new target (because our current target has been
-            // revealed)
-            boolean needNewTarget = !displayBoard[posCurrentTarget[0]][posCurrentTarget[1]].getName()
-                    .contains("goalTile");
+            int dist = manhattanIntDistance(posIntBoard[0] + intBoardOffset[0], posIntBoard[1] + intBoardOffset[1]);
+            min = min > dist ? dist : min;
 
-            // check if we know where the nugget is
-            for (int[] pos : SaboteurBoardState.hiddenPos) {
-                String tileName = displayBoard[pos[0]][pos[1]].getName();
-                if (tileName.contains("nugget")) {
-                    this.posCurrentTarget = pos;
-                    break;
+        }
+
+        return min;
+    }
+    public int getTilePriority(SaboteurTile tile){ 
+        if(tile.getIdx().length() > 1 && Character.isDigit(tile.getIdx().charAt(0)) && Character.isDigit(tile.getIdx().charAt(1))){
+            char c1 = tile.getIdx().charAt(0);
+            char c2 = tile.getIdx().charAt(1);
+            String s = "" + c1 + c2;
+            int index = Integer.parseInt(s);
+            return tilePriorities[index];
+        }
+        else if(Character.isDigit(tile.getIdx().charAt(0))){
+            return tilePriorities[Character.getNumericValue(tile.getIdx().charAt(0))];
+        }
+        return -1;
+    }
+    public int calculateMoveGoodness(SaboteurMove m){
+        return manhattanDistance(m.getPosPlayed()) + getTilePriority((SaboteurTile)m.getCardPlayed());
+    }
+
+    public int[] findTileToDestroy(SaboteurTile[][] board){
+        int originPosition = SaboteurBoardState.originPos;
+
+        // queue implemented using LinkedList & HashSet to keep track of visited nodes
+        // (to prevent nodes from being visited more than once)
+        LinkedList<Node> queue = new LinkedList<>();
+        HashSet<String> visited = new HashSet<>();
+
+        // if there exists a path from the current target to the starting point, then let's search for a
+        // disconnected tile from the targetPos
+        if(existsPathFromTargetToOrigin(board))
+            queue.add(new Node(posCurrentTarget[0], posCurrentTarget[1]));
+        //otherwise, let's search from the origin position
+        else
+            queue.add(new Node(originPosition, originPosition));
+
+        int[] startingCoords = {queue.getFirst().pos[0], queue.getFirst().pos[1]};
+
+        while(!queue.isEmpty()){
+            // pop the best choice so far
+            Node current = queue.removeFirst();
+
+            // get the current tile
+            SaboteurTile currentTile = board[current.pos[0]][current.pos[1]];
+
+            // visit the node
+            visited.add(Arrays.toString(current.pos));
+
+            int tilePriority = getTilePriority(currentTile);
+            if( current.pos[0] != startingCoords[0] && current.pos[1]!= startingCoords[1] && 
+             tilePriority > 50 ){
+                return new int[] {current.pos[0], current.pos[1]};
+            }
+
+            // pruned valid neighbours
+            ArrayList<int[]> neighbours = MyTools.getNeighbours(current.pos);
+            // count the number of closer neighbours to the target
+            for (int[] neighbour : neighbours) {
+                // stringify position
+                String neighbourPos = Arrays.toString(neighbour);
+            
+                // validate that the position has not been visited before, is a valid
+                // neighbour, and parent & child tiles are connected
+                if (board[neighbour[0]][neighbour[1]] != null && !visited.contains(neighbourPos)) {
+            
+                // visit node
+                visited.add(neighbourPos);
+            
+                // add the node to the queue
+                Node neighbourNode = new Node(neighbour[0], neighbour[1], current.cost + 1);
+                //add first (DFS)
+                queue.addFirst(neighbourNode);
                 }
-                if (needNewTarget && tileName.contains("goalTile"))
-                    this.posCurrentTarget = pos;
             }
         }
+        return new int[] {-1,-1};
+    }
+    
+    public boolean existsPathFromTargetToOrigin(SaboteurTile[][] board){
 
-        int playerNumber = boardState.getTurnNumber();
+        // queue implemented using LinkedList & HashSet to keep track of visited nodes
+        // (to prevent nodes from being visited more than once)
+        LinkedList<Node> queue = new LinkedList<>();
+        HashSet<String> visited = new HashSet<>();
 
-        // used for debugging
-        ArrayList<SaboteurCard> hand = boardState.getCurrentPlayerCards();
+        queue.add(new Node(posCurrentTarget[0], posCurrentTarget[0]));
 
-        // keep track of the cards we can possibly play during malus
-        SaboteurCard bonus = null, map = null, destroy = null, malus = null;
+        while(!queue.isEmpty()){
+            // pop the best choice so far
+            Node current = queue.removeFirst();
 
-        // check for unique cards in the deck (non-tile cards)
-        for (SaboteurCard card : hand) {
-            // retrieve the card name
-            String cardName = card.getName();
-            // if the card in our hand is a bonus card, play it immediately
-            if (cardName.equals("Bonus"))
-                bonus = card;
-            else if (cardName.equals("Map"))
-                map = card;
-            else if (cardName.equals("Destroy"))
-                destroy = card;
-            else if (cardName.equals("Malus"))
-                malus = card;
-        }
+            // get the current tile
+            SaboteurTile currentTile = board[current.pos[0]][current.pos[1]];
 
-        // play the map card if we have it and there is no current win condition
-        if (map != null && boardState.getTurnNumber() < manhattanDistance(SaboteurBoardState.originPos,
-                SaboteurBoardState.originPos))
-            return new SaboteurMove(map, this.posCurrentTarget[0], this.posCurrentTarget[1], this.player_id);
+            // visit the node
+            visited.add(Arrays.toString(current.pos));
 
-        // if we have a malus card, play it
-        if (malus != null)
-            return new SaboteurMove(malus, 0, 0, playerNumber);
-
-        // check if we are malused
-        if (boardState.getNbMalus(playerNumber) > 0) {
-            // check to see if we have a bonus card to play, if yes play
-            if (bonus != null)
-                return new SaboteurMove(bonus, 0, 0, playerNumber);
-
-            // check to see if we have a map card to play and we don't currently know where
-            // the nugget is, if yes play
-            if (map != null
-                    && displayBoard[this.posCurrentTarget[0]][this.posCurrentTarget[1]].getName().contains("goalTile"))
-                return new SaboteurMove(map, this.posCurrentTarget[0], this.posCurrentTarget[1], playerNumber);
-
-            else if (map != null) {
-                // if we know where the nugget is and we have a map card, the map card is
-                // rendered obsolete
-                // TODO: drop the map card in the deck
+            if(current.pos[0] == SaboteurBoardState.originPos && current.pos[1] == SaboteurBoardState.originPos){
+                return true;
             }
-
-            // TODO: remove the least useful cards from the deck vs dropping random card
-
-            // otherwise we have no bonus card and must drop a random card
-            Random rand = new Random();
-
-            // generate the random index we'll be dropping from our deck
-            int randomIndex = rand.nextInt(boardState.getCurrentPlayerCards().size());
-
-            // process the move to drop a random card
-            return (new SaboteurMove(new SaboteurDrop(), randomIndex, 0, boardState.getTurnPlayer()));
+            
+            // pruned valid neighbours
+            ArrayList<int[]> neighbours = MyTools.getNeighbours(current.pos);
+            // count the number of closer neighbours to the target
+            for (int[] neighbour : neighbours) {
+                // stringify position
+                String neighbourPos = Arrays.toString(neighbour);
+            
+                // validate that the position has not been visited before, is a valid
+                // neighbour, and parent & child tiles are connected
+                if (board[neighbour[0]][neighbour[1]] != null && !visited.contains(neighbourPos)) {
+            
+                // visit node
+                visited.add(neighbourPos);
+            
+                // add the node to the queue
+                Node neighbourNode = new Node(neighbour[0], neighbour[1]);
+                queue.addFirst(neighbourNode);
+                }
+            }
         }
+        return false;
+    }
 
-        // retrieve the list of legal moves
-        ArrayList<SaboteurMove> legalMoves = boardState.getAllLegalMoves();
-        int numLegalMoves = legalMoves.size();
+    // determines whether or not the cards in the hand or worth playing or not
+    // returns true if it is best to drop a card
+    public SaboteurMove assessHand(ArrayList<SaboteurMove> hand){
+        SaboteurMove worstMove = hand.get(0);
+        SaboteurMove bestMove = null;
+        for(SaboteurMove m : hand){
+            if(m.getCardPlayed() instanceof SaboteurTile){
 
-        // if there are no legal moves, drop a random card
-        if (numLegalMoves == 0) {
-            // TODO: check if dropping a card counts as a legal move
-            Random rand = new Random();
-
-            // generate the random index we'll be dropping from our deck
-            int randomIndex = rand.nextInt(boardState.getCurrentPlayerCards().size());
-
-            // process the move to drop a random card
-            return (new SaboteurMove(new SaboteurDrop(), randomIndex, 0, boardState.getTurnPlayer()));
+                if(getTilePriority((SaboteurTile)(m.getCardPlayed())) > getTilePriority((SaboteurTile)(worstMove.getCardPlayed()))){
+                    worstMove = m;
+                }
+                if(getTilePriority((SaboteurTile)(m.getCardPlayed())) < 50){
+                    bestMove = m;
+                }
+            }
         }
-
-        // map all coordinates to their legal moves
-        // e.g. ("[2, 5]" -> [move1, move2, ...])
-        HashMap<String, ArrayList<SaboteurMove>> coordToMoves = new HashMap<>();
-
-        for (SaboteurMove move : legalMoves) {
-            // construct the key
-            String key = Arrays.toString(move.getPosPlayed());
-
-            // get the value associate with key, defaulted to new array reference
-            ArrayList<SaboteurMove> val = coordToMoves.getOrDefault(key, new ArrayList<>());
-
-            // add move to the associated value
-            val.add(move);
-
-            // update key
-            coordToMoves.put(key, val);
+        //if there are no tiles with priority below 50, then all the tiles are bad
+        if(bestMove == null){
+            //drop the one with the highest tile priority
+            int indexOf = hand.indexOf(worstMove);
+            return new SaboteurMove(new SaboteurDrop(), indexOf, 0, boardState.getTurnPlayer());
         }
-
-        // there is at least one legal move to do, our goal is to pick the best one
-        SaboteurTile[][] board = boardState.getHiddenBoard();
-
+        return null;
+    }
+    /**
+     * returns a list of k ascending coordinates by manhattan distance
+     * 
+     * @param board the board represented as a matrix of saboteur tiles
+     * @return a sorted list of closest coordinates increasing in manhattan distance
+     */
+    public ArrayList<int[]> kClosest(SaboteurTile[][] board) {
         // get the original position
         int originPosition = SaboteurBoardState.originPos;
 
@@ -252,12 +290,10 @@ public class StudentPlayer extends SaboteurPlayer {
             for (int[] neighbour : neighbours) {
                 // stringify position
                 String neighbourPos = Arrays.toString(neighbour);
-                SaboteurTile neighbourTile = board[neighbour[0]][neighbour[1]];
 
                 // validate that the position has not been visited before, is a valid
                 // neighbour, and parent & child tiles are connected
-                if (board[neighbour[0]][neighbour[1]] != null && !visited.contains(neighbourPos)
-                        && MyTools.isConnected(currentTile, neighbourTile)) {
+                if (board[neighbour[0]][neighbour[1]] != null && !visited.contains(neighbourPos)) {
 
                     // visit node
                     visited.add(neighbourPos);
@@ -270,7 +306,7 @@ public class StudentPlayer extends SaboteurPlayer {
                         kClosest.add(neighbour);
 
                     // check if the neighbour is a closer neighbour, if so update closest node
-                    else if (neighbourNode.heuristic <= manhattanDistance(kClosest.peek())) {
+                    else if (neighbourNode.heuristic < manhattanDistance(kClosest.peek())) {
                         kClosest.poll();
                         kClosest.add(neighbour);
                     }
@@ -278,22 +314,174 @@ public class StudentPlayer extends SaboteurPlayer {
             }
         }
 
-        // offset of the edges from the center
-        int[][] edges = new int[][] { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+        ArrayList<int[]> toReturn = new ArrayList<>(kClosest);
+        toReturn.sort((int[] a, int[] b) -> manhattanDistance(a) - manhattanDistance(b));
+
+        return toReturn;
+    }
+
+    /**
+     * This is the primary method that you need to implement. The ``boardState``
+     * object contains the current state of the game, which your agent must use to
+     * make decisions.
+     */
+    public Move chooseMove(SaboteurBoardState boardState) {
+        this.boardState = boardState;
+        SaboteurTile[][] displayBoard = boardState.getBoardForDisplay();
+
+        // during first execution, do some extra math to locate the most optimal target
+        if (this.isFirstTime) {
+            this.isFirstTime = false;
+            this.posCurrentTarget = SaboteurBoardState.hiddenPos[1];
+        } else {
+            // check if we have new information about hidden tiles
+
+            // retrieve the tiles displayed from our persective
+
+            // do we need to find a new target (because our current target has been
+            // revealed)
+            boolean needNewTarget = !displayBoard[posCurrentTarget[0]][posCurrentTarget[1]].getName()
+                    .contains("goalTile");
+
+            // check if we know where the nugget is
+            for (int[] pos : SaboteurBoardState.hiddenPos) {
+                String tileName = displayBoard[pos[0]][pos[1]].getName();
+                if (tileName.contains("nugget")) {
+                    this.posCurrentTarget = pos;
+                    break;
+                }
+                if (needNewTarget && tileName.contains("goalTile"))
+                    this.posCurrentTarget = pos;
+            }
+        }
+
+        // TODO: if turnnumber < manhattan distance to goal, then drop useless cards
+        // while opponent builds towards goal for us
+
+        int playerNumber = boardState.getTurnPlayer();
+
+        // used for debugging
+        ArrayList<SaboteurCard> hand = boardState.getCurrentPlayerCards();
+        // sort the hand by ascending priority (worst cards at the end)
+        hand.sort((SaboteurCard a, SaboteurCard b) -> {
+            if (!(a instanceof SaboteurTile))
+                return -1;
+            if (!(b instanceof SaboteurTile))
+                return 1;
+
+            int priorityA = getTilePriority((SaboteurTile) a);
+            int priorityB = getTilePriority((SaboteurTile) b);;
+
+            return priorityA - priorityB;
+        });
+
+        // keep track of the cards we can possibly play during malus
+        SaboteurCard bonus = null, map = null, destroy = null, malus = null;
+
+        // check for unique cards in the deck (non-tile cards)
+        for (SaboteurCard card : hand) {
+            // retrieve the card name
+            String cardName = card.getName();
+            // if the card in our hand is a bonus card, play it immediately
+            if (cardName.equals("Bonus"))
+                bonus = card;
+            else if (cardName.equals("Map"))
+                map = card;
+            else if (cardName.equals("Destroy"))
+                destroy = card;
+            else if (cardName.equals("Malus"))
+                malus = card;
+        }
+
+        int[] destroyCoords = findTileToDestroy(boardState.getHiddenBoard());
+        // if we have a malus card, play it
+        if (malus != null)
+            return new SaboteurMove(malus, 0, 0, playerNumber);
+
+        // play the map card if we have it and there is no current win condition
+        if (map != null && boardState.getTurnNumber() < manhattanDistance(SaboteurBoardState.originPos,
+                SaboteurBoardState.originPos))
+            return new SaboteurMove(map, this.posCurrentTarget[0], this.posCurrentTarget[1], this.player_id);
+
+        if(destroy != null && !Arrays.equals(destroyCoords,new int[] {-1,-1})){
+            return new SaboteurMove(new SaboteurDestroy(),destroyCoords[0], destroyCoords[1], playerNumber); 
+        }
+        // check if we are malused
+        if (boardState.getNbMalus(playerNumber) > 0) {
+            // check to see if we have a bonus card to play, if yes play
+            if (bonus != null)
+                return new SaboteurMove(bonus, 0, 0, playerNumber);
+
+            // if we have a destroy card and a tile that should be destroyed, destroy it
+            if(destroy != null && !Arrays.equals(destroyCoords,new int[] {-1,-1})){
+                return new SaboteurMove(new SaboteurDestroy(),destroyCoords[0], destroyCoords[1], playerNumber); 
+            }
+
+            // check to see if we have a map card to play and we don't currently know where
+            // the nugget is, if yes play
+            if (map != null
+                    && displayBoard[this.posCurrentTarget[0]][this.posCurrentTarget[1]].getName().contains("goalTile"))
+                return new SaboteurMove(map, this.posCurrentTarget[0], this.posCurrentTarget[1], playerNumber);
+
+            else if (map != null) {
+                // if we know where the nugget is and we have a map card, the map card is
+                // rendered obsolete
+                return new SaboteurMove(new SaboteurDrop(), hand.indexOf(map), 0, playerNumber);
+            }
+
+
+            // Check that hand size is at least 1 
+            if(hand.size() >= 1)          
+                // process the move to drop a random card
+                return (new SaboteurMove(new SaboteurDrop(), hand.size() - 1, 0, boardState.getTurnPlayer()));
+
+        }
+
+        // retrieve the list of legal moves
+        ArrayList<SaboteurMove> legalMoves = boardState.getAllLegalMoves();
+
+        // check if there are any worthwile cards to play
+        // if there aren't, drop the worst card
+        SaboteurMove dropMove = assessHand(legalMoves);
+        if(dropMove != null && boardState.isLegal(dropMove)){
+            return dropMove;
+        }
+
+        // map all coordinates to their legal moves
+        // e.g. ("[2, 5]" -> [move1, move2, ...])
+        HashMap<String, ArrayList<SaboteurMove>> coordToMoves = new HashMap<>();
+
+        for (SaboteurMove move : legalMoves) {
+            // construct the key
+            String key = Arrays.toString(move.getPosPlayed());
+
+            // get the value associate with key, defaulted to new array reference
+            ArrayList<SaboteurMove> val = coordToMoves.getOrDefault(key, new ArrayList<>());
+
+            // add move to the associated value
+            val.add(move);
+
+            // update key
+            coordToMoves.put(key, val);
+        }
+
+        // there is at least one legal move to do, our goal is to pick the best one
+        SaboteurTile[][] board = boardState.getHiddenBoard();
 
         // sort from the closest positions to the target
-        ArrayList<int[]> kClosestSorted = new ArrayList<>(kClosest);
-        kClosestSorted.sort((int[] a, int[] b) -> manhattanDistance(a) - manhattanDistance(b));
+        ArrayList<int[]> kClosestSorted = this.kClosest(board);
 
         // store all of our potential plays
         ArrayList<SaboteurMove> potentialMoves = new ArrayList<>();
 
         // print all the k closest coordinates
-        for (int[] coord : kClosestSorted) {
+        for (int[] parentCoord : kClosestSorted) {
             // neighbours of one of the k closest positions that get us closer to the goal
-            ArrayList<int[]> potentialCandidates = MyTools.getNeighbours(coord);
+            ArrayList<int[]> potentialCandidates = MyTools.getNeighbours(parentCoord);
 
-            // pruned for coordinates where tiles dont already exist)
+            int[] posParentIntBoard = new int[] { parentCoord[0] * 3 + 1, parentCoord[1] * 3 + 1 };
+
+            // pruned for child coordinates (where tiles dont already exist)
             HashSet<String> prunedCandidates = new HashSet<>();
 
             // stringify the neighbours and insert into set (e.g. "[6, 5]", "[5, 5]", "[5,
@@ -303,63 +491,50 @@ public class StudentPlayer extends SaboteurPlayer {
                     prunedCandidates.add(Arrays.toString(candidate));
             }
 
-            for (String coordKey : prunedCandidates) {
-                ArrayList<SaboteurMove> legalMovesAtCoord = coordToMoves.get(coordKey);
+            for (String childKey : prunedCandidates) {
+                ArrayList<SaboteurMove> legalMovesAtCoord = coordToMoves.get(childKey);
 
                 // if there are no legal moves at the coordinate, skip
                 if (legalMovesAtCoord == null)
                     continue;
 
-                for (SaboteurMove moveAtCoord : legalMovesAtCoord) {
+                for (SaboteurMove potentialMoveAtCoord : legalMovesAtCoord) {
                     // if the potential move is not a tile, skip
-                    if (!(moveAtCoord.getCardPlayed() instanceof SaboteurTile))
+                    if (!(potentialMoveAtCoord.getCardPlayed() instanceof SaboteurTile))
                         continue;
 
                     // get the tile thats at coord
-                    SaboteurTile tileAtCoord = (SaboteurTile) moveAtCoord.getCardPlayed();
+                    SaboteurTile tileAtCoord = (SaboteurTile) potentialMoveAtCoord.getCardPlayed();
 
                     // get integer positions/coordinates in both the tile_board and int_board
-                    int[] pos = moveAtCoord.getPosPlayed();
-                    int[] posIntBoard = new int[] { pos[0] * 3 + 1, pos[1] * 3 + 1 };
+                    int[] posChild = potentialMoveAtCoord.getPosPlayed();
+                    int[] posChildIntBoard = new int[] { posChild[0] * 3 + 1, posChild[1] * 3 + 1 };
 
                     // if the tile has a wall in the middle, skip the tile (we don't want to
                     // consider it as a positive long-term investment)
                     if (tileAtCoord.getPath()[1][1] == 0)
                         continue;
 
-                    // the position/coordinate of the square within the intboard that corresponds to
-                    // the connection to the parent tile
-                    int[] connection = new int[2];
+                    int[] childConnectPoint = MyTools.getConnectedPoint(parentCoord, posChild);
 
-                    if (moveAtCoord.getPosPlayed()[0] > coord[0])
-                        // if the new card is below the parent card, the connection must be the left
-                        // edge
-                        connection = edges[1];
+                    // child and parent must be connected at some point; assertion
+                    assert childConnectPoint != null;
 
-                    if (moveAtCoord.getPosPlayed()[0] < coord[0])
-                        // if the new card is above the parent card, the connection must be the bottom
-                        // edge
-                        connection = edges[3];
-
-                    if (moveAtCoord.getPosPlayed()[1] > coord[1])
-                        // if the new card is to the right of the parent card, the connection must be
-                        // the left edge
-                        connection = edges[0];
-
-                    if (moveAtCoord.getPosPlayed()[1] < coord[1])
-                        // if the new card is to the left of the parent card, the connection must be the
-                        // right edge
-                        connection = edges[2];
+                    int[] intBoardConnectionOffset = MyTools.mapPathOffsetToIntBoardOffset(childConnectPoint);
 
                     for (int[] offset : edges) {
-                        if (boardState.getHiddenIntBoard()[posIntBoard[0] + offset[0]][posIntBoard[1] + offset[1]] == 0
-                                || connection == offset)
+                        if (tileAtCoord.getPath()[1 + offset[0]][1 + offset[1]] == 0
+                                || MyTools.posEqual(offset, childConnectPoint))
                             continue;
 
-                        if (manhattanIntDistance(posIntBoard[0] + offset[0],
-                                posIntBoard[1] + offset[1]) < manhattanIntDistance(posIntBoard[0] + connection[0],
-                                        posIntBoard[1] + connection[1])) {
-                            potentialMoves.add(moveAtCoord);
+                        // get intboard offset
+                        int[] intBoardEdgeOffset = MyTools.mapPathOffsetToIntBoardOffset(offset);
+
+                        if (manhattanIntDistance(posChildIntBoard[0] + intBoardEdgeOffset[0],
+                                posChildIntBoard[1] + intBoardEdgeOffset[1]) <= manhattanIntDistance(
+                                        posChildIntBoard[0] + intBoardConnectionOffset[0],
+                                        posChildIntBoard[1] + intBoardConnectionOffset[1])) {
+                            potentialMoves.add(potentialMoveAtCoord);
                             break;
                         }
                     }
@@ -368,8 +543,28 @@ public class StudentPlayer extends SaboteurPlayer {
             }
         }
 
-        potentialMoves.sort((SaboteurMove a, SaboteurMove b) -> manhattanDistance(a.getPosPlayed())
-                - manhattanDistance(b.getPosPlayed()));
+        potentialMoves.sort((SaboteurMove a, SaboteurMove b) -> {
+            if (!(a.getCardPlayed() instanceof SaboteurTile))
+                return 1;
+            if (!(b.getCardPlayed() instanceof SaboteurTile))
+                return -1;
+
+            SaboteurTile aTile = (SaboteurTile) a.getCardPlayed();
+            SaboteurTile bTile = (SaboteurTile) b.getCardPlayed();
+
+            // shortest manhattan distance of both tile paths
+            int shortestManhattanDistanceA = this.shortestManhattanDistanceOfTile(aTile,
+                    new int[] { a.getPosPlayed()[0] * 3 + 1, a.getPosPlayed()[1] * 3 + 1 });
+
+            int shortestManhattanDistanceB = this.shortestManhattanDistanceOfTile(bTile,
+                    new int[] { b.getPosPlayed()[0] * 3 + 1, b.getPosPlayed()[1] * 3 + 1 });
+
+            // priorities of the cards based on custom rating
+            int priorityA = getTilePriority((SaboteurTile) aTile);;
+            int priorityB = getTilePriority((SaboteurTile) bTile);;
+
+            return (shortestManhattanDistanceA + priorityA) - (shortestManhattanDistanceB + priorityB);
+        });
 
         for (SaboteurMove m : potentialMoves)
             if (boardState.isLegal(m))
